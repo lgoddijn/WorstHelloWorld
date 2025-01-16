@@ -1,5 +1,5 @@
 # Yes, it works!
-
+###### _Only on x86_64 architecture..._
 ![Screenshot](./screenshot.png)
 
 ## How to:
