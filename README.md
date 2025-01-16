@@ -3,14 +3,14 @@
 ![Screenshot](./screenshot.png)
 
 ## How to:
-#### Compile:
+### Compile:
 
-<span style="color:rgb(112, 112, 112);">Hint: Make sure you have `make` and `clang` installed</span>
+Hint: Make sure you have `make` and `clang` installed
 ```sh
 $(which make) all
 ```
 
-#### Run:
+### Run:
 ```sh
 ./helloworld
 ```
