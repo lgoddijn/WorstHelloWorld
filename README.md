@@ -18,7 +18,7 @@ $(which make) all clean
 
 ### Run:
 ```sh
-./helloworld
+./hello_world
 ```
 
 ### Clean:
