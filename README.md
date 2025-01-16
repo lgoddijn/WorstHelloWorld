@@ -2,7 +2,7 @@
 ###### _Only on x86_64 architecture..._
 ![Screenshot](./screenshot.png)
 
-* ## How to:
+## How to:
 ### Clone:
 ```sh
 git clone https://github.com/lgoddijn/WorstHelloWorld.git
