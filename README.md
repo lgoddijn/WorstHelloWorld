@@ -13,10 +13,15 @@ cd WorstHelloWorld
 
 ###### Hint: Make sure you have `make` and `clang` installed
 ```sh
-$(which make) all
+$(which make) all clean
 ```
 
 ### Run:
 ```sh
 ./helloworld
+```
+
+### Clean:
+```sh
+$(which make) fclean
 ```
