@@ -48,7 +48,15 @@ struct __ptcb
 	struct __ptcb *__next;
 };
 
-/* Removed irrelevant memory interpretation */
+struct __locale_map;
+
+struct __locale_struct
+{
+	const struct __locale_map *_c[6];
+};
+
+typedef struct __locale_struct * locale_t;
+
 struct __pthread
 {
 	struct __pthread *self;
@@ -86,6 +94,7 @@ struct __pthread
 	} robust_list;
 	int h_errno_val;
 	volatile int timer_id;
+	locale_t locale;
 	volatile int killlock[1];
 	char *dlerror_buf;
 	void *stdio_locks;
@@ -159,13 +168,16 @@ static ssize_t	write(int __fd, const void *__buf, size_t __size)
 # define	__STDOUT_FILENO	1
 #endif
 
-int	main(int argc, char **argv, char **envp)
+int	main(int argc, char **argv, char *envp[])
 {
 	(void)argc; (void)argv; (void)envp;
 
 	static const char _buf[__BUFSIZE] = "Hello, world!\n";
 
-	if (write(__STDOUT_FILENO, _buf, __BUFSIZE) != __EXIT_SUCCESS)
+	const ssize_t _bytes = write(
+		__STDOUT_FILENO, _buf, __BUFSIZE);
+
+	if (_bytes != __BUFSIZE)
 		return (__EXIT_FAILURE);
 	
 	return (__EXIT_SUCCESS);
