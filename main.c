@@ -255,10 +255,11 @@ int	main(const int argc, char **argv, char *envp[])
 {
 	(void)argc; (void)argv; (void)envp;
 
-	#define _RAW (const char[14]) {		\
-		72, 101, 108, 108, 111, 44, 32,	\
-		119, 111, 114, 108, 100, 33, 10	\
-	}
+	__attribute__((aligned(16)))
+	const char _RAW[14] = {
+		72, 101, 108, 108, 111, 44, 32,
+		119, 111, 114, 108, 100, 33, 10
+	};
 
 	register const size_t _bytes = __BUFSIZE(_RAW);
 
