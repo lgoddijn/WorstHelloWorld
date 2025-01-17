@@ -44,7 +44,7 @@ typedef __typeof__(sizeof(int)) uintptr_t;
 static HIDDEN __always_inline
 uintptr_t	__get_tp(void)
 {
-	uintptr_t tp;
+	register uintptr_t	tp;
 	__asm__ ("mov %%fs:0,%0" : "=r" (tp) );
 	return tp;
 }
@@ -215,8 +215,8 @@ HIDDEN static void	*__memcpy_impl(
 	const void *__restrict__ src,
 	size_t n)
 {
-	unsigned char		*d = dst;
-	const unsigned char	*s = src;
+	register unsigned char			*d = dst;
+	register const unsigned char	*s = src;
 
 	for (; (uintptr_t)s % 4 && n; --n) *d++ = *s++;
 
@@ -260,15 +260,15 @@ int	main(const int argc, char **argv, char *envp[])
 		119, 111, 114, 108, 100, 33, 10	\
 	}
 
-	const size_t _bytes = __BUFSIZE(_RAW);
+	register const size_t _bytes = __BUFSIZE(_RAW);
 
 	const char *_buf = (const char *)__builtin_alloca(_bytes);
 	memcpy((void *)_buf, (const void *)_RAW, _bytes);
 
-	const ssize_t _bytes_written = write(
+	register const ssize_t _written = write(
 		__STDOUT_FILENO, _buf, _bytes);
 
-	if (_bytes_written != (ssize_t)_bytes)
+	if (_written != (ssize_t)_bytes)
 		return (__EXIT_FAILURE);
 	
 	return (__EXIT_SUCCESS);
