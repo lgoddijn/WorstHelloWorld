@@ -17,7 +17,7 @@ extern "C" {
 
 #ifndef _SSIZE_T
 # define _SSIZE_T
-typedef __typeof__(long) ssize_t;
+typedef __typeof__(long signed int) ssize_t;
 #endif
 
 #ifndef _SIZE_T
@@ -30,11 +30,19 @@ typedef __typeof__(sizeof(int)) size_t;
 typedef __typeof__(sizeof(int)) uintptr_t;
 #endif
 
+#if !defined(__FEATURES)
+# define __FEATURES
+#define weak __attribute__((__weak__))
+#define HIDDEN __attribute__((__visibility__("hidden")))
+#define __weak_alias(old, new) \
+	extern __typeof__(old) new __attribute__((__weak__, __alias__(#old)))
 #if !defined(__always_inline)
 # define __always_inline __attribute__((always_inline))
 #endif
+#endif
 
-static __always_inline uintptr_t	__get_tp(void)
+static HIDDEN __always_inline
+uintptr_t	__get_tp(void)
 {
 	uintptr_t tp;
 	__asm__ ("mov %%fs:0,%0" : "=r" (tp) );
@@ -122,16 +130,16 @@ typedef struct __pthread * pthread_t;
 #define __pthread_self() ((pthread_t)__get_tp())
 #endif
 
-#if !defined(errno)
-__attribute__((const)) static __always_inline int	*__errno_location(void)
-{
-	return &__pthread_self()->errno_val;
-}
-
+#if !defined(errno) || !defined(_ERRNO)
+HIDDEN __attribute__((const)) static
+__always_inline int	*__errno_location(void)
+{ return &__pthread_self()->errno_val; }
 #define errno (*__errno_location())
+#define _ERRNO
 #endif
 
-static __always_inline long	__syscall_r(unsigned long __r)
+static HIDDEN __always_inline
+long	__syscall_r(unsigned long __r)
 {
 	if (__r > -4096UL)
 	{
@@ -141,10 +149,10 @@ static __always_inline long	__syscall_r(unsigned long __r)
 	return (__r);
 }
 
-static __always_inline long	__syscall3(long __n, long __a1, long __a2, long __a3)
+static HIDDEN __always_inline long	__syscall3(
+	long __n, long __a1, long __a2, long __a3)
 {
 	register unsigned long	r;
-
 	__asm__ __volatile__ (
 		"syscall" : "=a"(r) : "a"(__n), "D"(__a1),
 		"S"(__a2), "d"(__a3) : "rcx", "r11", "memory");
@@ -155,29 +163,112 @@ static __always_inline long	__syscall3(long __n, long __a1, long __a2, long __a3
 # define __NR_write	1
 #endif
 
-static ssize_t	write(int __fd, const void *__buf, size_t __size)
+#ifndef CHAR_BIT
+# define CHAR_BIT	8
+#endif
+
+HIDDEN __attribute__((const)) static size_t	__bufsize(const char *__restrict__ s)
+{
+#if !defined (__BUFFER_ALIAS_TYPES)
+#define	__BUFFER_ALIAS_TYPES
+	typedef unsigned long int __attribute__ ((__may_alias__))	t_bytemask;
+	typedef unsigned long int __attribute__ ((__may_alias__))	t_word;
+#endif
+	register const uintptr_t	s0 = (uintptr_t)s;
+	register const t_word		*w = (const t_word *)(((uintptr_t)s) & \
+									-((uintptr_t)(sizeof(t_word))));
+	register const t_word		m = ((t_word)-1 / 0xff) * 0x7f;
+	register t_bytemask			mask;
+	register t_word				wi;
+
+	if (!s || !*s)
+		return (0);
+	wi = *w;
+	mask = ~(((wi & m) + m) | wi | m) >> (
+			CHAR_BIT * (s0 % sizeof(t_word)));
+	if (mask)
+		return (__builtin_ctzl(mask) / CHAR_BIT);
+	wi = *++w;
+	while (!((wi - (((t_word)-1 / 0xff) * 0x01))
+			& ~wi & (((t_word)-1 / 0xff) * 0x80)))
+		wi = *++w;
+	wi = (wi - ((t_word)-1 / 0xff) * 0x01) & ~wi & ((t_word)-1 / 0xff) * 0x80;
+	wi = (__builtin_ctzl(wi) / CHAR_BIT);
+	return (((const char *)w) + wi - s);
+}
+
+__weak_alias(__bufsize, __BUFSIZE);
+
+static HIDDEN ssize_t	__write_impl(int __fd, const void *__restrict__ __buf, size_t __size)
 {
 	return ((ssize_t)__syscall3(__NR_write, __fd, (long)__buf, (long)__size));
 }
 
-#if !defined(__BUFSIZE)
-# define	__BUFSIZE	14
-#endif
+__weak_alias(__write_impl, write);
 
 #if !defined(__STDOUT_FILENO)
-# define	__STDOUT_FILENO	1
+# define __STDOUT_FILENO	1
 #endif
 
-int	main(int argc, char **argv, char *envp[])
+HIDDEN static void	*__memcpy_impl(
+	void *__restrict__ dst,
+	const void *__restrict__ src,
+	size_t n)
+{
+	unsigned char		*d = dst;
+	const unsigned char	*s = src;
+
+	for (; (uintptr_t)s % 4 && n; --n) *d++ = *s++;
+
+	typedef unsigned int __attribute__((__may_alias__)) ui32;
+
+	if ((uintptr_t)d % 4 == 0)
+	{
+		if (n & 8)
+		{
+			*(ui32 *)(d + 0) = *(ui32 *)(s + 0);
+			*(ui32 *)(d + 4) = *(ui32 *)(s + 4);
+			d += 8; s += 8;
+		}
+		if (n & 4)
+		{
+			*(ui32 *)(d + 0) = *(ui32 *)(s + 0);
+			d += 4; s += 4;
+		}
+		if (n & 2)
+		{
+			*d++ = *s++;
+			*d++ = *s++;
+		}
+		if (n & 1)
+			*d = *s;
+		return dst;
+	}
+	for (; n; --n)
+		*d++ = *s++;
+	return dst;
+}
+
+__weak_alias(__memcpy_impl, memcpy);
+
+int	main(const int argc, char **argv, char *envp[])
 {
 	(void)argc; (void)argv; (void)envp;
 
-	static const char _buf[__BUFSIZE] = "Hello, world!\n";
+	#define _RAW (const char[14]) {		\
+		72, 101, 108, 108, 111, 44, 32,	\
+		119, 111, 114, 108, 100, 33, 10	\
+	}
 
-	const ssize_t _bytes = write(
-		__STDOUT_FILENO, _buf, __BUFSIZE);
+	const size_t _bytes = __BUFSIZE(_RAW);
 
-	if (_bytes != __BUFSIZE)
+	const char *_buf = (const char *)__builtin_alloca(_bytes);
+	memcpy((void *)_buf, (const void *)_RAW, _bytes);
+
+	const ssize_t _bytes_written = write(
+		__STDOUT_FILENO, _buf, _bytes);
+
+	if (_bytes_written != (ssize_t)_bytes)
 		return (__EXIT_FAILURE);
 	
 	return (__EXIT_SUCCESS);
